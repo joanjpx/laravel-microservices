@@ -1,0 +1,27 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: customers-service
+          uri: lb://CUSTOMERS-SERVICE
+          predicates:
+            - Path=/api/customers/**
+
+        - id: products-service
+          uri: lb://PRODUCTS-SERVICE
+          predicates:
+            - Path=/api/products/**
+
+eureka:
+  client:
+    serviceUrl: 
+      defaultZone: http://127.0.0.1:8761/eureka/
+    registerWithEureka: true
+    fetchRegistry: true
+  instance:
+    preferIpAddress: true
