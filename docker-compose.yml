@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mariadb:10.5.24
+    container_name: laravel_mysql_db
+    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      - MARIADB_ROOT_PASSWORD=root
+      - MARIADB_DATABASE=laravel
+      - MARIADB_USER=laravel
+      - MARIADB_PASSWORD=laravel
+    networks:
+      - app-network
+    ports:
+      - "9001:3306"
+
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:15
+    container_name: laravel_postgres_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=laravel
+      - POSTGRES_PASSWORD=laravel
+      - POSTGRES_DB=laravel
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    ports:
+      - "5432:5432"
+
+  # Laravel Customer Service
+  service-customer:
+    build: ./service-customer
+    image: service-customer-php
+    container_name: service-customer
+    ports:
+      - "8001:80"
+    volumes:
+      - ./service-customer:/var/www/html
+    networks:
+      - app-network
+    working_dir: /var/www/html
+    environment:
+      - EUREKA_SERVER_URL=http://discovery-service:8761/eureka/
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    command: >
+      bash -c "chown -R www-data:www-data /var/www/html && 
+               chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && 
+               apache2-foreground &&
+               php artisan app:eureka-register"
+    depends_on:
+      - discovery-service
+
+  # Laravel Product Service
+  service-product:
+    build: ./service-product
+    image: service-product-php
+    container_name: service-product
+    ports:
+      - "8002:80"
+    volumes:
+      - ./service-product:/var/www/html
+    networks:
+      - app-network
+    working_dir: /var/www/html
+    environment:
+      - EUREKA_SERVER_URL=http://discovery-service:8761/eureka/
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    command: >
+      bash -c "chown -R www-data:www-data /var/www/html && 
+               chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && 
+               apache2-foreground &&
+               php artisan app:eureka-register"
+    depends_on:
+      - discovery-service
+
+  # Eureka Service Discovery (Fixed name)
+  discovery-service:
+    image: openjdk:21-jdk-slim
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    expose:
+      - "8761"
+    volumes:
+      - ./eureka/target/eureka-0.0.1-SNAPSHOT.jar:/app/discovery_service.jar
+    command: ["java", "-jar", "/app/discovery_service.jar"]
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - app-network
+
+  # API Gateway
+  gateway-service:
+    image: openjdk:21-jdk-slim
+    container_name: gateway-service
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    volumes:
+      - ./gateway/target/gateway-0.0.1-SNAPSHOT.jar:/app/gateway_service.jar
+    environment:
+      - eureka.client.serviceUrl.defaultZone=http://discovery-service:8761/eureka
+      - DISCOVERY_SERVER_URL=http://discovery-service:8761/eureka
+      - SPRING_PROFILES_ACTIVE=docker
+    command: ["java", "-jar", "/app/gateway_service.jar"]
+    networks:
+      - app-network
+    depends_on:
+      - discovery-service
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  postgresql_data:

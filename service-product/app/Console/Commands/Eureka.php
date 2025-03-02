@@ -12,21 +12,25 @@ class Eureka extends Command
 
     public function handle()
     {
-        $eurekaUrl = env('EUREKA_SERVER_URL', 'http://localhost:8761/eureka');
+        $eurekaUrl = env('EUREKA_SERVER_URL', 'http://discovery-service:8761/eureka'); // Use correct service name
+
         $appName = strtoupper(env('APP_NAME', 'Laravel')); // Eureka expects uppercase
-        $hostName = gethostbyname(gethostname()); // Get real IP
-        $appUrl = env('APP_URL', 'http://localhost:8000'); // Extract from .env
-        $port = parse_url($appUrl, PHP_URL_PORT) ?? 8000; // Extract port dynamically
+
+        // Use Docker's container name as the hostname
+        $hostName = gethostname();
+
+        $appUrl = env('APP_URL', "http://$hostName:8002"); // Ensure correct container name
+        $port = parse_url($appUrl, PHP_URL_PORT) ?? 8002; // Set the correct service port
 
         $client = new EurekaClient([
             'eurekaDefaultUrl' => $eurekaUrl,
-            'hostName' => $hostName,
+            'hostName' => $hostName,  // Now using the Docker container name
             'appName' => $appName,
-            'ip' => $hostName,
-            'port' => [$port, true], // Dynamic port
+            'ip' => $hostName, // Eureka will resolve it within the Docker network
+            'port' => [$port, true],
             'homePageUrl' => "$appUrl/",
-            'statusPageUrl' => "$appUrl/api/info", // Adjusted to API route
-            'healthCheckUrl' => "$appUrl/api/health" // Adjusted to API route
+            'statusPageUrl' => "$appUrl/api/info",
+            'healthCheckUrl' => "$appUrl/api/health"
         ]);
 
         $client->register();
