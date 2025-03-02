@@ -51,9 +51,9 @@ services:
       - APACHE_DOCUMENT_ROOT=/var/www/html/public
     command: >
       bash -c "chown -R www-data:www-data /var/www/html && 
-               chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && 
-               apache2-foreground &&
-               php artisan app:eureka-register"
+              chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache &&
+              (php artisan app:eureka-register &) &&
+              apache2-foreground"
     depends_on:
       - discovery-service
 
@@ -74,9 +74,9 @@ services:
       - APACHE_DOCUMENT_ROOT=/var/www/html/public
     command: >
       bash -c "chown -R www-data:www-data /var/www/html && 
-               chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && 
-               apache2-foreground &&
-               php artisan app:eureka-register"
+              chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache &&
+              (php artisan app:eureka-register &) &&
+              apache2-foreground"
     depends_on:
       - discovery-service
 
